@@ -153,6 +153,22 @@
       font-size: 32px;
       font-weight: bold;
     }
+
+    /* Efeitos do mini jogo */
+    .arrow {
+      position: fixed;
+      font-size: 64px;
+      opacity: 0;
+      animation: pop 0.6s ease forwards;
+      pointer-events: none;
+      z-index: 99;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      40% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(1); opacity: 0; top: 20%; }
+    }
   </style>
 </head>
 <body>
@@ -183,16 +199,23 @@
     <source src="launch-sound.mp3" type="audio/mpeg">
   </audio>
 
+  <!-- Som das setas -->
+  <audio id="arrow-audio">
+    <source src="arrow.mp3" type="audio/mpeg">
+  </audio>
+
   <script>
     (function () {
-      const target = new Date(2025, 8, 4, 11, 0, 0, 0); // 4 de setembro 2025
+      const target = new Date(2025, 8, 4, 11, 0, 0, 0);
       const countdownEl = document.getElementById('countdown');
       const metaEl = document.getElementById('meta');
       const checkboxes = Array.from(document.querySelectorAll('.segmented input'));
       const audioBg = document.getElementById('bg-audio');
       const audioLaunch = document.getElementById('launch-audio');
+      const audioArrow = document.getElementById('arrow-audio');
       const nf = new Intl.NumberFormat('pt-BR');
       let launched = false;
+      let konamiUnlocked = false;
 
       const units = {
         days: 86400000,
@@ -208,7 +231,7 @@
         seconds: 'segundos',
       };
 
-      const unitOrder = ['days', 'hours', 'minutes', 'seconds']; // maior → menor
+      const unitOrder = ['days', 'hours', 'minutes', 'seconds'];
 
       function getSelectedUnits() {
         return checkboxes.filter(cb => cb.checked).map(cb => cb.value);
@@ -239,9 +262,22 @@
           return;
         }
 
-        // Usar SOMENTE as unidades selecionadas, convertendo todo o resto para elas.
+        if (konamiUnlocked) {
+          // Modo Césio-137
+          const frequency = 9_192_631_770; // Hz
+          const vibrations = BigInt(Math.floor(diff / 1000)) * BigInt(frequency);
+          countdownEl.innerHTML = `
+            <div class="time-block">
+              <div class="number">${vibrations.toString()}</div>
+              <div class="label">vibrações de Césio-137</div>
+            </div>`;
+          document.title = "Silksong — Modo Secreto!";
+          return;
+        }
+
+        // Modo normal
         const selectedRaw = getSelectedUnits();
-        const selected = selectedRaw.length ? selectedRaw : ['seconds']; // fallback se nada marcado
+        const selected = selectedRaw.length ? selectedRaw : ['seconds'];
         const sortedSelected = unitOrder.filter(u => selected.includes(u));
 
         const { values } = breakdownUsing(sortedSelected, diff);
@@ -261,6 +297,54 @@
       checkboxes.forEach(cb => cb.addEventListener('change', renderCountdown));
       renderCountdown();
       setInterval(renderCountdown, 1000);
+
+      // ======== Mini jogo secreto ========
+      const arrowSymbols = {
+        ArrowUp: "⬆️",
+        ArrowDown: "⬇️",
+        ArrowLeft: "⬅️",
+        ArrowRight: "➡️",
+      };
+
+      function spawnArrow(symbol) {
+        const el = document.createElement("div");
+        el.className = "arrow";
+        el.textContent = symbol;
+        el.style.left = Math.random() * (window.innerWidth - 100) + "px";
+        el.style.top = Math.random() * (window.innerHeight - 100) + "px";
+        document.body.appendChild(el);
+        audioArrow.currentTime = 0;
+        audioArrow.play();
+        setTimeout(() => el.remove(), 800);
+      }
+
+      // Konami code: ↑ ↑ ↓ ↓ ← → ← → B A
+      const konamiCode = [
+        "ArrowUp","ArrowUp",
+        "ArrowDown","ArrowDown",
+        "ArrowLeft","ArrowRight",
+        "ArrowLeft","ArrowRight",
+        "b","a"
+      ];
+      let konamiPos = 0;
+
+      window.addEventListener("keydown", e => {
+        if (arrowSymbols[e.key]) {
+          spawnArrow(arrowSymbols[e.key]);
+        }
+
+        // checar konami
+        if (e.key.toLowerCase() === konamiCode[konamiPos].toLowerCase()) {
+          konamiPos++;
+          if (konamiPos === konamiCode.length) {
+            konamiUnlocked = true;
+            konamiPos = 0;
+            alert("✨ Modo secreto ativado: Césio-137!");
+          }
+        } else {
+          konamiPos = 0;
+        }
+      });
     })();
   </script>
 </body>
