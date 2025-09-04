@@ -262,26 +262,18 @@
           return;
         }
 
-          if (konamiUnlocked) {
-            // Modo Césio-137 — formatado só com separador de milhar
-            const frequency = 9_192_631_770n; // Hz como BigInt
-            const secondsLeft = BigInt(Math.floor(diff / 1000));
-            const vibrations = secondsLeft * frequency; // BigInt
-          
-            const formatted = vibrations.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-          
-            countdownEl.innerHTML = `
-              <div class="time-block">
-                <div class="number">${formatted}</div>
-                <div class="label">vibrações de Césio-137</div>
-              </div>
-            `;
-          
-            document.title = "Silksong — Modo Secreto (Césio-137)";
-            metaEl.innerHTML = \`Data alvo: <code>\${target.toLocaleString('pt-BR')} (\${Intl.DateTimeFormat().resolvedOptions().timeZone})</code>\`;
-            return;
-          }
-
+        if (konamiUnlocked) {
+          // Modo Césio-137
+          const frequency = 9_192_631_770; // Hz
+          const vibrations = BigInt(Math.floor(diff / 1000)) * BigInt(frequency);
+          countdownEl.innerHTML = `
+            <div class="time-block">
+              <div class="number">${vibrations.toString()}</div>
+              <div class="label">vibrações de Césio-137</div>
+            </div>`;
+          document.title = "Silksong — Modo Secreto!";
+          return;
+        }
 
         // Modo normal
         const selectedRaw = getSelectedUnits();
