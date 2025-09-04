@@ -24,7 +24,6 @@
       overflow: hidden;
     }
 
-    /* Background gif escuro */
     body::before {
       content: "";
       position: fixed;
@@ -50,6 +49,7 @@
       backdrop-filter: blur(10px);
       text-align: center;
     }
+
     h1 {
       margin: 0 0 8px;
       font-size: clamp(26px, 4vw, 38px);
@@ -57,23 +57,27 @@
       letter-spacing: 1px;
       color: var(--accent);
     }
+
     .sub { color: var(--muted); margin-bottom: 24px; font-size: 15px }
     .big {
-      font-size: clamp(46px, 10vw, 120px);
-      line-height: 1.05;
-      font-weight: 800;
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1.3;
+      font-weight: 600;
       letter-spacing: -1px;
       margin: 8px 0 4px;
+      white-space: pre-wrap;
     }
-    .unit { color: var(--muted); font-size: clamp(14px, 2.4vw, 18px) }
+
     .controls {
       margin-top: 20px;
       display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
     }
+
     .segmented {
       display: inline-grid; grid-auto-flow: column; gap: 8px;
       background: rgba(0,0,0,0.4); padding: 8px; border-radius: 14px; border: 1px solid var(--ring);
     }
+
     .segmented input { display: none }
     .segmented label {
       padding: 10px 14px; border-radius: 10px; cursor: pointer; user-select: none;
@@ -81,13 +85,13 @@
       transition: transform .06s ease, background .2s ease, border-color .2s ease;
       font-weight: 600; font-size: 14px; color: var(--muted);
     }
+
     .segmented input:checked + label {
       background: rgba(225, 182, 74, 0.25);
       color: var(--text);
       border-color: rgba(225, 182, 74, 0.6);
       box-shadow: 0 0 0 3px rgba(225, 182, 74, 0.2);
     }
-    .segmented label:active { transform: translateY(1px) }
 
     .meta { margin-top: 16px; color: var(--muted); font-size: 13px }
     .meta code { background: rgba(0,0,0,0.4); border: 1px solid var(--ring); padding: 2px 6px; border-radius: 8px }
@@ -101,35 +105,39 @@
     <p class="sub">Faltam até o lançamento em <strong>4 de setembro de 2025 às 11:00</strong> (horário local).</p>
 
     <div class="big" id="value">—</div>
-    <div class="unit" id="unit">segundos</div>
 
-    <div class="controls" aria-label="Escolher unidade">
-      <div class="segmented" role="radiogroup" aria-label="Unidade de tempo">
-        <input type="radio" name="u" id="u_s" value="seconds" checked>
-        <label for="u_s">Segundos</label>
-
-        <input type="radio" name="u" id="u_m" value="minutes">
-        <label for="u_m">Minutos</label>
-
-        <input type="radio" name="u" id="u_h" value="hours">
-        <label for="u_h">Horas</label>
-
-        <input type="radio" name="u" id="u_d" value="days">
-        <label for="u_d">Dias</label>
+    <div class="controls" aria-label="Escolher unidades">
+      <div class="segmented" role="group" aria-label="Unidades de tempo">
+        <input type="checkbox" id="u_d" value="days" checked><label for="u_d">Dias</label>
+        <input type="checkbox" id="u_h" value="hours" checked><label for="u_h">Horas</label>
+        <input type="checkbox" id="u_m" value="minutes" checked><label for="u_m">Minutos</label>
+        <input type="checkbox" id="u_s" value="seconds" checked><label for="u_s">Segundos</label>
       </div>
     </div>
 
     <div class="meta" id="meta"></div>
   </main>
 
+  <!-- Background Audio -->
+  <audio id="bg-audio" loop autoplay>
+    <source src="countdown-music.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- Launch Audio (plays once on launch) -->
+  <audio id="launch-audio">
+    <source src="launch-sound.mp3" type="audio/mpeg">
+  </audio>
+
   <script>
     (function(){
-      const target = new Date(2025, 8, 4, 11, 0, 0, 0); // 4 setembro 2025 11h
-
+      const target = new Date(2025, 8, 4, 11, 0, 0, 0);
       const valueEl = document.getElementById('value');
-      const unitEl  = document.getElementById('unit');
-      const metaEl  = document.getElementById('meta');
-      const radios  = Array.from(document.querySelectorAll('input[name="u"]'));
+      const metaEl = document.getElementById('meta');
+
+      const audioBg = document.getElementById('bg-audio');
+      const audioLaunch = document.getElementById('launch-audio');
+
+      const checkboxes = Array.from(document.querySelectorAll('.segmented input[type="checkbox"]'));
 
       const nf = new Intl.NumberFormat('pt-BR');
       const df = new Intl.DateTimeFormat('pt-BR', {
@@ -154,42 +162,52 @@
         }
       }
 
-      function compute(u) {
+      function render() {
         const now = new Date();
         let ms = +target - +now;
-        if (ms <= 0) return { done: true, n: 0, u };
-        let n;
-        if (u === 'seconds') n = Math.floor(ms / 1000);
-        else if (u === 'minutes') n = Math.floor(ms / 60000);
-        else if (u === 'hours') n = Math.floor(ms / 3600000);
-        else if (u === 'days') n = Math.floor(ms / 86400000);
-        return { done: false, n, u };
-      }
 
-      function selectedUnit(){
-        return (radios.find(r => r.checked) || { value: 'seconds' }).value;
-      }
-
-      function render() {
-        const u = selectedUnit();
-        const { done, n } = compute(u);
-        if (done) {
+        if (ms <= 0) {
           valueEl.textContent = 'Lançado!';
           valueEl.classList.add('done');
-          unitEl.textContent = '';
           document.title = 'Silksong lançado!';
-        } else {
-          valueEl.textContent = nf.format(n);
-          unitEl.textContent = unitLabel(u, n);
-          document.title = nf.format(n) + ' ' + unitLabel(u, n) + ' — Silksong';
+          metaEl.innerHTML = `Data alvo: <code>${df.format(target)} (${tzName()})</code>`;
+          if (!audioLaunch.played.length) {
+            audioBg.pause();
+            audioLaunch.play();
+          }
+          return;
         }
+
+        let remaining = ms;
+        const parts = [];
+
+        const units = {
+          days:    86400000,
+          hours:   3600000,
+          minutes: 60000,
+          seconds: 1000
+        };
+
+        checkboxes.forEach(cb => {
+          if (cb.checked && units[cb.value]) {
+            const value = Math.floor(remaining / units[cb.value]);
+            if (value > 0 || cb.value === 'seconds') {
+              parts.push(`${nf.format(value)} ${unitLabel(cb.value, value)}`);
+            }
+            remaining -= value * units[cb.value];
+          }
+        });
+
+        valueEl.textContent = parts.length > 0 ? parts.join(' ') : '—';
+        document.title = parts.join(' ') + ' — Silksong';
+
         metaEl.innerHTML = `Data alvo: <code>${df.format(target)} (${tzName()})</code>`;
       }
 
-      radios.forEach(r => r.addEventListener('change', render));
+      checkboxes.forEach(cb => cb.addEventListener('change', render));
 
       render();
-      setInterval(render, 250);
+      setInterval(render, 1000);
     })();
   </script>
 </body>
