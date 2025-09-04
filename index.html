@@ -222,29 +222,47 @@
             audioLaunch.play();
             launched = true;
           }
-
           countdownEl.innerHTML = `<div class="done">Lançado!</div>`;
           document.title = 'Silksong lançado!';
           return;
         }
 
-        const time = {};
-        for (const u in units) {
-          time[u] = Math.floor(diff / units[u]);
-          diff -= time[u] * units[u];
-        }
-
         const selected = getSelectedUnits();
-        countdownEl.innerHTML = Object.keys(units)
-          .filter(unit => selected.includes(unit))
-          .map(unit => `
+        let blocks = [];
+
+        if (selected.length === 1) {
+          // Só uma unidade → mostrar total nessa unidade
+          const unit = selected[0];
+          const value = Math.floor((target - now) / units[unit]);
+          blocks.push(`
             <div class="time-block">
-              <div class="number">${nf.format(time[unit])}</div>
+              <div class="number">${nf.format(value)}</div>
               <div class="label">${labels[unit]}</div>
             </div>
-          `).join('');
+          `);
+          document.title = `Silksong — ${nf.format(value)} ${labels[unit]}`;
+        } else {
+          // Várias unidades → quebrar normalmente
+          let remaining = target - now;
+          const time = {};
+          for (const u of Object.keys(units)) {
+            time[u] = Math.floor(remaining / units[u]);
+            remaining -= time[u] * units[u];
+          }
 
-        document.title = `Silksong — ${selected.map(u => nf.format(time[u]) + ' ' + labels[u]).join(', ')}`;
+          blocks = Object.keys(units)
+            .filter(unit => selected.includes(unit))
+            .map(unit => `
+              <div class="time-block">
+                <div class="number">${nf.format(time[unit])}</div>
+                <div class="label">${labels[unit]}</div>
+              </div>
+            `);
+
+          document.title = `Silksong — ${selected.map(u => nf.format(time[u]) + ' ' + labels[u]).join(', ')}`;
+        }
+
+        countdownEl.innerHTML = blocks.join('');
         metaEl.innerHTML = `Data alvo: <code>${target.toLocaleString('pt-BR')} (${Intl.DateTimeFormat().resolvedOptions().timeZone})</code>`;
       }
 
